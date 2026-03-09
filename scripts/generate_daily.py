@@ -160,25 +160,104 @@ def build_report(now):
 
 def build_index():
     files = sorted(DAILY_DIR.glob('*.md'), reverse=True)
-    items = "\n".join([f"<li><a href='daily/{f.name}'>{f.stem}</a></li>" for f in files[:60]])
+    latest = files[0].stem if files else 'N/A'
+    items = "\n".join([
+        f"<li><a href='daily/{f.name}'><span>{f.stem}</span><small>查看</small></a></li>" for f in files[:60]
+    ])
     html = f"""<!doctype html>
 <html lang='zh-CN'>
 <head>
   <meta charset='UTF-8'>
   <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-  <title>Global Finance Daily</title>
+  <title>Kora Path · Global Finance Daily</title>
   <style>
-    body{{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:920px;margin:32px auto;padding:0 16px;line-height:1.6}}
-    h1{{margin-bottom:8px}} .muted{{color:#666}} ul{{padding-left:20px}}
-    .card{{border:1px solid #eee;border-radius:12px;padding:16px;margin:18px 0;background:#fafafa}}
+    :root {{
+      --bg:#0b0f17; --panel:#121827; --card:#0f172a; --line:#25324a;
+      --text:#e6edf7; --muted:#93a4bd; --gold:#c8a15a; --ok:#23c483;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin:0; color:var(--text);
+      background: radial-gradient(1200px 500px at 10% -10%, #1b2a45 0%, transparent 60%), var(--bg);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      line-height:1.6;
+    }}
+    .wrap {{ max-width: 980px; margin: 36px auto; padding: 0 16px; }}
+    .hero {{
+      background: linear-gradient(135deg, rgba(200,161,90,.12), rgba(35,196,131,.08));
+      border:1px solid var(--line); border-radius: 18px; padding: 26px 22px;
+      box-shadow: 0 12px 32px rgba(0,0,0,.28);
+    }}
+    h1 {{ margin:0; font-size: 34px; letter-spacing:.2px; }}
+    .sub {{ margin-top:8px; color:var(--muted); }}
+    .meta {{ display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }}
+    .chip {{
+      border:1px solid var(--line); background: rgba(18,24,39,.75); color:var(--muted);
+      border-radius:999px; padding:6px 10px; font-size:13px;
+    }}
+    .chip b {{ color: var(--gold); font-weight:600; }}
+
+    .grid {{ display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-top:18px; }}
+    .card {{
+      background: var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px;
+    }}
+    .card h2 {{ margin:0 0 10px 0; font-size:18px; color:var(--gold); }}
+    .kpi {{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }}
+    .kpi .box {{
+      background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 12px;
+    }}
+    .kpi .label {{ color:var(--muted); font-size:12px; }}
+    .kpi .val {{ font-size:20px; font-weight:700; margin-top:2px; }}
+
+    ul.list {{ list-style:none; margin:0; padding:0; max-height: 560px; overflow:auto; }}
+    ul.list li + li {{ margin-top:10px; }}
+    ul.list a {{
+      display:flex; justify-content:space-between; align-items:center;
+      text-decoration:none; color:var(--text);
+      background:var(--card); border:1px solid var(--line); border-radius:12px;
+      padding:12px 14px;
+      transition: transform .15s ease, border-color .15s ease;
+    }}
+    ul.list a:hover {{ transform: translateY(-1px); border-color: #3c4f72; }}
+    ul.list small {{ color: var(--muted); }}
+
+    footer {{ color:var(--muted); text-align:center; margin:20px 0 6px; font-size:13px; }}
+
+    @media (max-width: 820px) {{
+      .grid {{ grid-template-columns:1fr; }}
+      h1 {{ font-size:28px; }}
+    }}
   </style>
 </head>
 <body>
-  <h1>全球金融投资日报</h1>
-  <p class='muted'>每日 09:00 (Asia/Shanghai) 自动更新 · 仓库: landors615-gif/daily</p>
-  <div class='card'>
-    <strong>最近日报</strong>
-    <ul>{items}</ul>
+  <div class='wrap'>
+    <section class='hero'>
+      <h1>全球金融投资日报</h1>
+      <p class='sub'>Kora Path · AI 驱动宏观观察面板</p>
+      <div class='meta'>
+        <span class='chip'>更新频率：<b>每日 09:00</b>（Asia/Shanghai）</span>
+        <span class='chip'>仓库：<b>landors615-gif/daily</b></span>
+        <span class='chip'>最新一期：<b>{latest}</b></span>
+      </div>
+    </section>
+
+    <section class='grid'>
+      <article class='card'>
+        <h2>日报概览</h2>
+        <div class='kpi'>
+          <div class='box'><div class='label'>总期数</div><div class='val'>{len(files)}</div></div>
+          <div class='box'><div class='label'>状态</div><div class='val' style='color:var(--ok)'>RUNNING</div></div>
+        </div>
+        <p class='sub' style='margin-top:12px;'>本页面由 GitHub Pages 托管，内容由自动化任务生成与更新。</p>
+      </article>
+
+      <article class='card'>
+        <h2>历史日报</h2>
+        <ul class='list'>{items}</ul>
+      </article>
+    </section>
+
+    <footer>© Kora Path · Built with OpenClaw · Not Investment Advice</footer>
   </div>
 </body>
 </html>"""
