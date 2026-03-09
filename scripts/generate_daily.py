@@ -67,6 +67,35 @@ def fmt_line(name, d):
     return f"{name}: {d['close']} ({ptxt})"
 
 
+def parse_pct_from_line(line: str):
+    m = re.search(r"\(([+-]?\d+(?:\.\d+)?)%\)", line)
+    if not m:
+        return None
+    try:
+        return float(m.group(1))
+    except Exception:
+        return None
+
+
+def colorize_line(line: str):
+    p = parse_pct_from_line(line)
+    if p is None:
+        return line
+    if p > 0:
+        arrow = '▲'
+        cls = 'up'   # 中国市场习惯：上涨红色
+        ptxt = f"+{abs(p):.2f}%"
+    elif p < 0:
+        arrow = '▼'
+        cls = 'down' # 下跌绿色
+        ptxt = f"-{abs(p):.2f}%"
+    else:
+        arrow = '•'
+        cls = 'flat'
+        ptxt = '0.00%'
+    return re.sub(r"\(([+-]?\d+(?:\.\d+)?)%\)", f"(<span class='{cls}'>{arrow} {ptxt}</span>)", line)
+
+
 def build_data(now):
     dji = stooq('^dji')
     spx = stooq('^spx')
@@ -78,33 +107,37 @@ def build_data(now):
     cn = tencent_cn_indices()
 
     mood = "震荡偏谨慎"
+    mood_emoji = "⚖️"
     if dji and spx:
         pd = pct(dji['open'], dji['close']) or 0
         ps = pct(spx['open'], spx['close']) or 0
         if pd > 0.4 and ps > 0.4:
             mood = "风险偏好回升"
+            mood_emoji = "🚀"
         elif pd < -0.4 and ps < -0.4:
             mood = "避险情绪升温"
+            mood_emoji = "🛡️"
 
     return {
         "date": now.strftime('%Y-%m-%d'),
         "time": now.strftime('%Y-%m-%d %H:%M'),
         "mood": mood,
+        "mood_emoji": mood_emoji,
         "us": {
-            "dji": fmt_line('道指 (DJI)', dji),
-            "spx": fmt_line('标普500 (SPX)', spx),
-            "ndq": fmt_line('纳斯达克100 (NDQ)', ndq),
+            "dji": colorize_line(fmt_line('道指 (DJI)', dji)),
+            "spx": colorize_line(fmt_line('标普500 (SPX)', spx)),
+            "ndq": colorize_line(fmt_line('纳斯达克100 (NDQ)', ndq)),
         },
         "cn": {
-            "sse": f"上证指数: {cn.get('sse', {}).get('close', 'N/A')} ({cn.get('sse', {}).get('pct', 'N/A')}%)",
-            "sz": f"深证成指: {cn.get('sz', {}).get('close', 'N/A')} ({cn.get('sz', {}).get('pct', 'N/A')}%)",
-            "cyb": f"创业板指: {cn.get('cyb', {}).get('close', 'N/A')} ({cn.get('cyb', {}).get('pct', 'N/A')}%)",
+            "sse": colorize_line(f"上证指数: {cn.get('sse', {}).get('close', 'N/A')} ({cn.get('sse', {}).get('pct', 'N/A')}%)"),
+            "sz": colorize_line(f"深证成指: {cn.get('sz', {}).get('close', 'N/A')} ({cn.get('sz', {}).get('pct', 'N/A')}%)"),
+            "cyb": colorize_line(f"创业板指: {cn.get('cyb', {}).get('close', 'N/A')} ({cn.get('cyb', {}).get('pct', 'N/A')}%)"),
         },
         "commodities": {
-            "wti": fmt_line('WTI 原油', wti),
-            "brent": fmt_line('布伦特原油', brent),
-            "gold": fmt_line('黄金 (XAUUSD)', xau),
-            "silver": fmt_line('白银 (XAGUSD)', xag),
+            "wti": colorize_line(fmt_line('WTI 原油', wti)),
+            "brent": colorize_line(fmt_line('布伦特原油', brent)),
+            "gold": colorize_line(fmt_line('黄金 (XAUUSD)', xau)),
+            "silver": colorize_line(fmt_line('白银 (XAGUSD)', xag)),
         }
     }
 
@@ -135,6 +168,9 @@ def build_daily_html(d):
     .card {{ background:var(--card); border:1px solid var(--line); border-radius:20px; padding:20px; box-shadow:0 8px 20px rgba(0,0,0,.04); }}
     .card h2 {{ margin:0 0 12px 0; font-size:22px; letter-spacing:-.01em; }}
     .card p {{ margin:8px 0; color:#303035; }}
+    .up {{ color:#d70015; font-weight:600; }}
+    .down {{ color:#0f9d58; font-weight:600; }}
+    .flat {{ color:#6e6e73; font-weight:600; }}
     .list {{ margin:0; padding-left:18px; }}
     .list li {{ margin:7px 0; }}
     .focus {{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:8px; }}
@@ -158,7 +194,7 @@ def build_daily_html(d):
       <div class='chips'>
         <span class='chip'>日期：<b>{d['date']}</b></span>
         <span class='chip'>生成时间：<b>{d['time']}</b></span>
-        <span class='chip'>市场情绪：<b>{d['mood']}</b></span>
+        <span class='chip'>市场情绪：<b>{d['mood_emoji']} {d['mood']}</b></span>
       </div>
     </section>
 
@@ -291,29 +327,32 @@ def build_index():
 
 
 def build_daily_md(d):
+    def plain(x: str):
+        return re.sub(r'<[^>]+>', '', x)
+
     return f"""# 全球金融投资日报（{d['date']}）
 
 ## 🌍 宏观风向标
-过去24小时市场主线围绕美联储路径预期、主要经济体政策信号与能源供需预期展开，整体情绪为 **{d['mood']}**。
+过去24小时市场主线围绕美联储路径预期、主要经济体政策信号与能源供需预期展开，整体情绪为 **{d['mood_emoji']} {d['mood']}**。
 
 ## 🇺🇸 美股聚焦
-- {d['us']['dji']}
-- {d['us']['spx']}
-- {d['us']['ndq']}
+- {plain(d['us']['dji'])}
+- {plain(d['us']['spx'])}
+- {plain(d['us']['ndq'])}
 
 ## 🇨🇳 A股透视
-- {d['cn']['sse']}
-- {d['cn']['sz']}
-- {d['cn']['cyb']}
+- {plain(d['cn']['sse'])}
+- {plain(d['cn']['sz'])}
+- {plain(d['cn']['cyb'])}
 
 ## ⛽️💰 大宗商品
-- {d['commodities']['wti']}
-- {d['commodities']['brent']}
-- {d['commodities']['gold']}
-- {d['commodities']['silver']}
+- {plain(d['commodities']['wti'])}
+- {plain(d['commodities']['brent'])}
+- {plain(d['commodities']['gold'])}
+- {plain(d['commodities']['silver'])}
 
 ## 💡 策略综述与明日展望
-**市场情绪：{d['mood']}，以数据验证替代预判。**
+**市场情绪：{d['mood_emoji']} {d['mood']}，以数据验证替代预判。**
 
 > 本报告仅作信息参考，不构成投资建议。
 """
