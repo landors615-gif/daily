@@ -1,0 +1,38 @@
+name: Generate Finance Daily
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 09:00 Asia/Shanghai = 01:00 UTC
+    - cron: "0 1 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Generate daily report
+        run: |
+          python scripts/generate_daily.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add daily index.html
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update finance daily $(date -u +'%Y-%m-%d')"
+            git push
+          fi
