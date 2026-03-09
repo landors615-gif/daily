@@ -36,13 +36,17 @@ def tencent_cn_indices():
     vals = {}
     keys = ['sse', 'sz', 'cyb']
     for k, r in zip(keys, rows):
-        nums = re.findall(r"-?\d+\.\d+|-?\d+", r)
-        if len(nums) >= 4:
-            vals[k] = {
-                'close': nums[1],
-                'chg': nums[2],
-                'pct': nums[3],
-            }
+        # 腾讯返回类似：v_s_sh000001="1~上证指数~000001~4096.60~-27.59~-0.67~...";
+        m = re.search(r'="([^"]+)"', r)
+        if not m:
+            continue
+        parts = m.group(1).split('~')
+        # 索引位：3=现价, 4=涨跌, 5=涨跌幅(%)
+        if len(parts) >= 6:
+            close = parts[3]
+            chg = parts[4]
+            pct = parts[5]
+            vals[k] = {'close': close, 'chg': chg, 'pct': pct}
     return vals
 
 
