@@ -219,6 +219,7 @@ def build_daily_html(d):
 def build_index():
     html_files = sorted(DAILY_DIR.glob('*.html'), reverse=True)
     latest = html_files[0].stem if html_files else 'N/A'
+    latest_disp = latest.replace('-', '/') if latest != 'N/A' else latest
     items = "\n".join([
         f"<li><a href='daily/{f.name}'><span>{f.stem}</span><small>阅读日报</small></a></li>" for f in html_files[:60]
     ])
@@ -252,11 +253,8 @@ def build_index():
   <div class='wrap'>
     <section class='hero'>
       <h1>全球金融投资日报</h1>
-      <div class='sub'>Apple-like 简洁视觉 · GitHub Pages 自动发布</div>
       <div class='chips'>
-        <span class='chip'>最新一期：<b>{latest}</b></span>
-        <span class='chip'>更新频率：<b>每日 09:00（Asia/Shanghai）</b></span>
-        <span class='chip'>仓库：<b>landors615-gif/daily</b></span>
+        <span class='chip'>最新一期：<b>{latest_disp}</b></span>
       </div>
     </section>
 
