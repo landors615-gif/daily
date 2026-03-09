@@ -225,7 +225,7 @@ def build_index():
     latest = html_files[0].stem if html_files else 'N/A'
     latest_disp = latest.replace('-', '/') if latest != 'N/A' else latest
     items = "\n".join([
-        f"<li><a href='daily/{f.name}'><span>{f.stem}</span><small>阅读日报</small></a></li>" for f in html_files[:60]
+        f"<li><a class='item' href='daily/{f.name}'><span>{f.stem}</span><span class='btn'>阅读日报</span></a></li>" for f in html_files[:60]
     ])
     html = f"""<!doctype html>
 <html lang='zh-CN'>
@@ -247,9 +247,26 @@ def build_index():
     .card {{ margin-top:16px; background:var(--card); border:1px solid var(--line); border-radius:20px; padding:18px; box-shadow:0 8px 20px rgba(0,0,0,.04); }}
     ul {{ list-style:none; margin:0; padding:0; }}
     li + li {{ margin-top:10px; }}
-    a.item {{ display:flex; justify-content:space-between; text-decoration:none; color:var(--text); border:1px solid var(--line); border-radius:14px; padding:12px 14px; background:#fafafa; }}
-    a.item:hover {{ border-color:#cfd3da; }}
-    small {{ color:var(--muted); }}
+    a.item {{
+      display:flex; justify-content:space-between; align-items:center;
+      text-decoration:none; color:var(--text);
+      border:1px solid var(--line); border-radius:14px;
+      padding:12px 14px; background:#fafafa;
+      transition: all .18s ease;
+    }}
+    a.item:hover {{ border-color:#cfd3da; transform: translateY(-1px); }}
+    .btn {{
+      background: linear-gradient(180deg, #2997ff, #0071e3);
+      color: #fff;
+      border-radius: 999px;
+      padding: 7px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .2px;
+      box-shadow: 0 4px 12px rgba(0,113,227,.28);
+      border: 1px solid rgba(255,255,255,.35);
+      white-space: nowrap;
+    }}
     .footer {{ text-align:center; color:var(--muted); margin:18px 0 6px; font-size:13px; }}
   </style>
 </head>
