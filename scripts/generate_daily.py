@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import datetime as dt
+import json
 import os
 import re
 import subprocess
@@ -7,6 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DAILY_DIR = ROOT / "daily"
+CONTENT_DIR = ROOT / "content"
 
 
 def sh(cmd: str) -> str:
@@ -180,6 +182,43 @@ def build_data(now):
             "brent": colorize_line(fmt_line('布伦特原油', brent)),
             "gold": colorize_line(fmt_line('黄金 (XAUUSD)', xau)),
             "silver": colorize_line(fmt_line('白银 (XAGUSD)', xag)),
+        }
+    }
+
+
+def build_content_payload(d):
+    # 内容层：结构化文本主稿（作为渲染唯一来源）
+    def plain(x: str):
+        return re.sub(r'<[^>]+>', '', x)
+
+    return {
+        "date": d["date"],
+        "time": d["time"],
+        "mood": f"{d['mood_emoji']} {d['mood']}",
+        "sections": {
+            "macro": {
+                "title": "🌍 宏观风向标",
+                "summary": d["macro_note"]
+            },
+            "us": {
+                "title": "🇺🇸 美股聚焦",
+                "items": [plain(d['us']['dji']), plain(d['us']['spx']), plain(d['us']['ndq'])],
+                "summary": d["us_note"]
+            },
+            "cn": {
+                "title": "🇨🇳 A股透视",
+                "items": [plain(d['cn']['sse']), plain(d['cn']['sz']), plain(d['cn']['cyb'])],
+                "summary": d["cn_note"]
+            },
+            "commodities": {
+                "title": "⛽️💰 大宗商品",
+                "items": [plain(d['commodities']['wti']), plain(d['commodities']['brent']), plain(d['commodities']['gold']), plain(d['commodities']['silver'])],
+                "summary": d["com_note"]
+            },
+            "strategy": {
+                "title": "💡 策略综述与明日展望",
+                "summary": d["strategy_note"]
+            }
         }
     }
 
@@ -410,16 +449,22 @@ def build_daily_md(d):
 def main():
     now = dt.datetime.now(dt.timezone(dt.timedelta(hours=8)))
     DAILY_DIR.mkdir(parents=True, exist_ok=True)
+    CONTENT_DIR.mkdir(parents=True, exist_ok=True)
     data = build_data(now)
 
-    daily_html = DAILY_DIR / f"{data['date']}.html"
-    daily_html.write_text(build_daily_html(data), encoding='utf-8')
+    # 1) 内容层：先生成主稿（JSON + MD）
+    content_json = CONTENT_DIR / f"{data['date']}.json"
+    content_json.write_text(json.dumps(build_content_payload(data), ensure_ascii=False, indent=2), encoding='utf-8')
 
     daily_md = DAILY_DIR / f"{data['date']}.md"
     daily_md.write_text(build_daily_md(data), encoding='utf-8')
 
+    # 2) 渲染层：再根据内容生成 HTML 与首页入口
+    daily_html = DAILY_DIR / f"{data['date']}.html"
+    daily_html.write_text(build_daily_html(data), encoding='utf-8')
+
     build_index(data['time'])
-    print(f"generated {daily_html}")
+    print(f"generated {daily_html} from content/{data['date']}.json")
 
 
 if __name__ == '__main__':
