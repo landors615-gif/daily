@@ -96,6 +96,17 @@ def colorize_line(line: str):
     return re.sub(r"\(([+-]?\d+(?:\.\d+)?)%\)", f"(<span class='{cls}'>{arrow} {ptxt}</span>)", line)
 
 
+def strength_word(v):
+    if v is None:
+        return "偏平"
+    a = abs(v)
+    if a >= 1.2:
+        return "显著"
+    if a >= 0.5:
+        return "温和"
+    return "窄幅"
+
+
 def build_data(now):
     dji = stooq('^dji')
     spx = stooq('^spx')
@@ -106,23 +117,54 @@ def build_data(now):
     xag = stooq('xagusd')
     cn = tencent_cn_indices()
 
+    us_p = {
+        'dji': pct(dji['open'], dji['close']) if dji else None,
+        'spx': pct(spx['open'], spx['close']) if spx else None,
+        'ndq': pct(ndq['open'], ndq['close']) if ndq else None,
+    }
+    cn_p = {
+        'sse': float(cn.get('sse', {}).get('pct', 'nan')) if cn.get('sse', {}).get('pct') not in [None, 'N/A', ''] else None,
+        'sz': float(cn.get('sz', {}).get('pct', 'nan')) if cn.get('sz', {}).get('pct') not in [None, 'N/A', ''] else None,
+        'cyb': float(cn.get('cyb', {}).get('pct', 'nan')) if cn.get('cyb', {}).get('pct') not in [None, 'N/A', ''] else None,
+    }
+    com_p = {
+        'wti': pct(wti['open'], wti['close']) if wti else None,
+        'brent': pct(brent['open'], brent['close']) if brent else None,
+        'gold': pct(xau['open'], xau['close']) if xau else None,
+        'silver': pct(xag['open'], xag['close']) if xag else None,
+    }
+
     mood = "震荡偏谨慎"
     mood_emoji = "⚖️"
-    if dji and spx:
-        pd = pct(dji['open'], dji['close']) or 0
-        ps = pct(spx['open'], spx['close']) or 0
-        if pd > 0.4 and ps > 0.4:
-            mood = "风险偏好回升"
-            mood_emoji = "🚀"
-        elif pd < -0.4 and ps < -0.4:
-            mood = "避险情绪升温"
-            mood_emoji = "🛡️"
+    pd = us_p['dji'] or 0
+    ps = us_p['spx'] or 0
+    if pd > 0.4 and ps > 0.4:
+        mood = "风险偏好回升"
+        mood_emoji = "🚀"
+    elif pd < -0.4 and ps < -0.4:
+        mood = "避险情绪升温"
+        mood_emoji = "🛡️"
+
+    us_avg = sum([x for x in us_p.values() if x is not None]) / max(1, len([x for x in us_p.values() if x is not None]))
+    cn_avg = sum([x for x in cn_p.values() if x is not None]) / max(1, len([x for x in cn_p.values() if x is not None]))
+    oil_avg = sum([x for x in [com_p['wti'], com_p['brent']] if x is not None]) / max(1, len([x for x in [com_p['wti'], com_p['brent']] if x is not None]))
+
+    macro_note = f"美股整体{strength_word(us_avg)}{'走强' if us_avg > 0 else ('回落' if us_avg < 0 else '震荡')}，A股表现{strength_word(cn_avg)}{'偏强' if cn_avg > 0 else ('偏弱' if cn_avg < 0 else '中性')}，跨市场风险偏好维持{mood}。"
+    us_note = f"美股三大指数呈现{strength_word(us_avg)}波动，短线仍由利率预期与AI成长叙事共同定价。"
+    cn_note = f"A股三大指数今日{strength_word(cn_avg)}{'上行' if cn_avg > 0 else ('回调' if cn_avg < 0 else '震荡')}，风格切换仍围绕权重与成长之间展开。"
+    com_note = f"原油表现{strength_word(oil_avg)}{'偏强' if oil_avg > 0 else ('偏弱' if oil_avg < 0 else '震荡')}，贵金属继续受美元与实际利率预期影响。"
+    strategy_note = f"{mood_emoji} {mood}：优先跟踪数据验证，避免在{strength_word(us_avg if abs(us_avg) > abs(cn_avg) else cn_avg)}波动阶段做情绪化追涨杀跌。"
 
     return {
         "date": now.strftime('%Y-%m-%d'),
         "time": now.strftime('%Y-%m-%d %H:%M:%S'),
         "mood": mood,
         "mood_emoji": mood_emoji,
+        "macro_note": macro_note,
+        "us_note": us_note,
+        "cn_note": cn_note,
+        "com_note": com_note,
+        "strategy_note": strategy_note,
         "us": {
             "dji": colorize_line(fmt_line('道指 (DJI)', dji)),
             "spx": colorize_line(fmt_line('标普500 (SPX)', spx)),
@@ -201,7 +243,7 @@ def build_daily_html(d):
     <section class='grid'>
       <article class='card'>
         <h2>🌍 宏观风向标</h2>
-        <p>过去24小时市场主线围绕美联储路径预期、主要经济体政策信号与能源供需预期展开。风险资产与避险资产呈现跷跷板效应，当前市场对增量宏观信息的敏感度持续提升。</p>
+        <p>{d['macro_note']}</p>
       </article>
 
       <article class='card'>
@@ -211,7 +253,7 @@ def build_daily_html(d):
           <li>{d['us']['spx']}</li>
           <li>{d['us']['ndq']}</li>
         </ul>
-        <p>科技成长与AI链条仍是弹性来源；“利率-估值”仍是短线定价核心。</p>
+        <p>{d['us_note']}</p>
       </article>
 
       <article class='card'>
@@ -221,7 +263,7 @@ def build_daily_html(d):
           <li>{d['cn']['sz']}</li>
           <li>{d['cn']['cyb']}</li>
         </ul>
-        <p>资金在权重与成长风格间切换，政策边际变化仍是板块轮动触发器。</p>
+        <p>{d['cn_note']}</p>
       </article>
 
       <article class='card'>
@@ -232,12 +274,12 @@ def build_daily_html(d):
           <li>{d['commodities']['gold']}</li>
           <li>{d['commodities']['silver']}</li>
         </ul>
-        <p>油价影响通胀交易，金银仍受美元与实际利率主导。</p>
+        <p>{d['com_note']}</p>
       </article>
 
       <article class='card' style='grid-column:1/-1'>
         <h2>💡 策略综述与明日展望</h2>
-        <p><strong>市场情绪一句话：</strong>{d['mood']}，以数据验证替代预判。</p>
+        <p><strong>市场情绪一句话：</strong>{d['strategy_note']}</p>
         <div class='focus'>
           <div class='box'><strong>观察点 1</strong><br>美债收益率与美元指数是否同向强化</div>
           <div class='box'><strong>观察点 2</strong><br>能源价格是否突破关键区间并影响通胀交易</div>
@@ -334,17 +376,21 @@ def build_daily_md(d):
     return f"""# 全球金融投资日报（{d['date']}）
 
 ## 🌍 宏观风向标
-过去24小时市场主线围绕美联储路径预期、主要经济体政策信号与能源供需预期展开，整体情绪为 **{d['mood_emoji']} {d['mood']}**。
+{d['macro_note']}
 
 ## 🇺🇸 美股聚焦
 - {plain(d['us']['dji'])}
 - {plain(d['us']['spx'])}
 - {plain(d['us']['ndq'])}
 
+{d['us_note']}
+
 ## 🇨🇳 A股透视
 - {plain(d['cn']['sse'])}
 - {plain(d['cn']['sz'])}
 - {plain(d['cn']['cyb'])}
+
+{d['cn_note']}
 
 ## ⛽️💰 大宗商品
 - {plain(d['commodities']['wti'])}
@@ -352,8 +398,10 @@ def build_daily_md(d):
 - {plain(d['commodities']['gold'])}
 - {plain(d['commodities']['silver'])}
 
+{d['com_note']}
+
 ## 💡 策略综述与明日展望
-**市场情绪：{d['mood_emoji']} {d['mood']}，以数据验证替代预判。**
+**{d['strategy_note']}**
 
 > 本报告仅作信息参考，不构成投资建议。
 """
