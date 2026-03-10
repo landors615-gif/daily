@@ -120,7 +120,7 @@ def build_data(now):
 
     return {
         "date": now.strftime('%Y-%m-%d'),
-        "time": now.strftime('%Y-%m-%d %H:%M'),
+        "time": now.strftime('%Y-%m-%d %H:%M:%S'),
         "mood": mood,
         "mood_emoji": mood_emoji,
         "us": {
@@ -256,7 +256,7 @@ def build_daily_html(d):
 </html>"""
 
 
-def build_index():
+def build_index(generated_time: str):
     html_files = sorted(DAILY_DIR.glob('*.html'), reverse=True)
     latest = html_files[0].stem if html_files else 'N/A'
     latest_disp = latest.replace('-', '/') if latest != 'N/A' else latest
@@ -312,6 +312,7 @@ def build_index():
       <h1>全球金融投资日报</h1>
       <div class='chips'>
         <span class='chip'>最新一期：<b>{latest_disp}</b></span>
+        <span class='chip'>最近生成：<b>{generated_time}</b></span>
       </div>
     </section>
 
@@ -369,7 +370,7 @@ def main():
     daily_md = DAILY_DIR / f"{data['date']}.md"
     daily_md.write_text(build_daily_md(data), encoding='utf-8')
 
-    build_index()
+    build_index(data['time'])
     print(f"generated {daily_html}")
 
 
