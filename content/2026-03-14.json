@@ -1,11 +1,21 @@
 {
   "date": "2026-03-14",
-  "time": "2026-03-14 17:00:35",
+  "time": "2026-03-14 17:08:53",
   "mood": "⚖️ 震荡偏谨慎",
   "sections": {
     "macro": {
       "title": "🌍 宏观风向标",
-      "summary": "美股整体温和回落，A股表现温和偏弱，跨市场风险偏好维持震荡偏谨慎。"
+      "summary": "美股整体温和回落，A股表现温和偏弱，跨市场风险偏好震荡偏谨慎。"
+    },
+    "events": {
+      "title": "📰 当日关键事件",
+      "items": [
+        "Oil prices in the driving seat as energy shock upends global markets - Financial Times",
+        "Iran war takes toll on global markets - The Berkshire Eagle",
+        "Middle East Energy Disruptions: A Supply Shock Analysis - Enverus",
+        "The war on Iran will speed the transition away from fossil fuels and toward nuclear energy, creating strategic challenges for the United States - Bulletin of the Atomic Scientists",
+        "Underlying Inflation Dashboard - Federal Reserve Bank of Atlanta"
+      ]
     },
     "us": {
       "title": "🇺🇸 美股聚焦",
@@ -14,7 +24,7 @@
         "标普500 (SPX): 6632.19 (▼ -0.62%)",
         "纳斯达克100 (NDQ): 22105.36 (▼ -1.43%)"
       ],
-      "summary": "美股三大指数呈现温和波动，短线仍由利率预期与AI成长叙事共同定价。"
+      "summary": "美股三大指数呈现温和波动，当前交易主线围绕美联储路径与美债收益率变化展开。"
     },
     "cn": {
       "title": "🇨🇳 A股透视",
@@ -23,7 +33,7 @@
         "深证成指: 14280.78 (▼ -0.65%)",
         "创业板指: 3310.28 (▼ -0.22%)"
       ],
-      "summary": "A股三大指数今日温和回调，风格切换仍围绕权重与成长之间展开。"
+      "summary": "A股日内呈现温和回调，后续需要观察政策预期与内需修复节奏能否持续。"
     },
     "commodities": {
       "title": "⛽️💰 大宗商品",
@@ -33,11 +43,11 @@
         "黄金 (XAUUSD): 5019.83 (▼ -1.50%)",
         "白银 (XAGUSD): 80.6 (▼ -4.48%)"
       ],
-      "summary": "原油表现显著偏强，贵金属继续受美元与实际利率预期影响。"
+      "summary": "原油表现显著偏强，贵金属波动受避险需求与美元波动影响更明显。"
     },
     "strategy": {
       "title": "💡 策略综述与明日展望",
-      "summary": "⚖️ 震荡偏谨慎：优先跟踪数据验证，避免在温和波动阶段做情绪化追涨杀跌。"
+      "summary": "⚖️ 震荡偏谨慎：基线情景以数据验证为先，若地缘风险再升温，需控制仓位并避免情绪化追涨杀跌。"
     }
   }
 }

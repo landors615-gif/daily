@@ -4,6 +4,8 @@ import json
 import os
 import re
 import subprocess
+import random
+import hashlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,6 +52,55 @@ def tencent_cn_indices():
             pct = parts[5]
             vals[k] = {'close': close, 'chg': chg, 'pct': pct}
     return vals
+
+
+def fetch_rss_titles(url: str, limit: int = 5):
+    xml = sh(f"curl -L -s --max-time 12 '{url}'")
+    if not xml:
+        return []
+    titles = re.findall(r'<title><!\[CDATA\[(.*?)\]\]></title>|<title>(.*?)</title>', xml, flags=re.I | re.S)
+    out = []
+    for a, b in titles:
+        t = (a or b or '').strip()
+        t = re.sub(r'\s+', ' ', t)
+        if not t:
+            continue
+        tl = t.lower()
+        if tl in {'rss', 'reuters', 'cnbc', 'google news'}:
+            continue
+        if ' - google news' in tl:
+            continue
+        if t.startswith('"') and '" - ' in t:
+            continue
+        out.append(t)
+    dedup = []
+    seen = set()
+    for t in out:
+        key = t.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        dedup.append(t)
+    return dedup[:limit]
+
+
+def detect_event_tags(headlines):
+    text = ' '.join(headlines).lower()
+    tags = []
+    rules = [
+        ('fed', ['fed', 'federal reserve', 'powell', 'rate cut', 'rate hike']),
+        ('inflation', ['inflation', 'cpi', 'ppi']),
+        ('yields', ['treasury', 'bond yield', '10-year yield']),
+        ('ai_tech', ['ai', 'nvidia', 'microsoft', 'apple', 'tesla', 'semiconductor', 'chip']),
+        ('geopolitics', ['ukraine', 'middle east', 'geopolitical', 'tariff', 'sanction']),
+        ('china_policy', ['china', 'beijing', 'pboc', 'stimulus', 'property', 'policy']),
+        ('oil_supply', ['opec', 'oil supply', 'crude', 'brent', 'wti']),
+        ('gold_safe_haven', ['gold', 'safe haven', 'dollar']),
+    ]
+    for name, kws in rules:
+        if any(k in text for k in kws):
+            tags.append(name)
+    return tags
 
 
 def pct(open_, close_):
@@ -151,11 +202,63 @@ def build_data(now):
     cn_avg = sum([x for x in cn_p.values() if x is not None]) / max(1, len([x for x in cn_p.values() if x is not None]))
     oil_avg = sum([x for x in [com_p['wti'], com_p['brent']] if x is not None]) / max(1, len([x for x in [com_p['wti'], com_p['brent']] if x is not None]))
 
-    macro_note = f"美股整体{strength_word(us_avg)}{'走强' if us_avg > 0 else ('回落' if us_avg < 0 else '震荡')}，A股表现{strength_word(cn_avg)}{'偏强' if cn_avg > 0 else ('偏弱' if cn_avg < 0 else '中性')}，跨市场风险偏好维持{mood}。"
-    us_note = f"美股三大指数呈现{strength_word(us_avg)}波动，短线仍由利率预期与AI成长叙事共同定价。"
-    cn_note = f"A股三大指数今日{strength_word(cn_avg)}{'上行' if cn_avg > 0 else ('回调' if cn_avg < 0 else '震荡')}，风格切换仍围绕权重与成长之间展开。"
-    com_note = f"原油表现{strength_word(oil_avg)}{'偏强' if oil_avg > 0 else ('偏弱' if oil_avg < 0 else '震荡')}，贵金属继续受美元与实际利率预期影响。"
-    strategy_note = f"{mood_emoji} {mood}：优先跟踪数据验证，避免在{strength_word(us_avg if abs(us_avg) > abs(cn_avg) else cn_avg)}波动阶段做情绪化追涨杀跌。"
+    world_news = fetch_rss_titles('https://news.google.com/rss/search?q=global+markets+when:1d&hl=en-US&gl=US&ceid=US:en', limit=4)
+    business_news = fetch_rss_titles('https://news.google.com/rss/search?q=federal+reserve+inflation+when:1d&hl=en-US&gl=US&ceid=US:en', limit=4)
+    market_news = fetch_rss_titles('https://news.google.com/rss/search?q=china+market+oil+gold+when:1d&hl=en-US&gl=US&ceid=US:en', limit=4)
+    headlines = (world_news + business_news + market_news)[:8]
+    event_tags = detect_event_tags(headlines)
+
+    day_seed = int(hashlib.md5(now.strftime('%Y-%m-%d').encode()).hexdigest()[:8], 16)
+    rng = random.Random(day_seed)
+
+    macro_templates = [
+        "美股整体{us_trend}，A股表现{cn_trend}，跨市场风险偏好{mood}。",
+        "跨资产盘面显示：美股{us_trend}、A股{cn_trend}，整体情绪仍处于{mood}区间。",
+        "从当日收盘结构看，美股{us_trend}且A股{cn_trend}，风险偏好维持{mood}。",
+    ]
+    us_templates = [
+        "美股三大指数呈现{us_vol}波动，当前交易主线围绕{driver}展开。",
+        "纳指与标普的节奏分化仍在，短线由{driver}主导估值锚。",
+        "美股日内定价核心在于{driver}，指数表现为{us_vol}波动。",
+    ]
+    cn_templates = [
+        "A股三大指数今日{cn_move}，盘面关注点集中在{driver}。",
+        "A股延续{cn_move}，资金在权重与成长之间切换，主要受{driver}影响。",
+        "A股日内呈现{cn_move}，后续需要观察{driver}能否持续。",
+    ]
+    com_templates = [
+        "原油表现{oil_trend}，贵金属波动受{driver}影响更明显。",
+        "大宗商品中油价{oil_trend}，金银价格继续围绕{driver}交易。",
+        "商品端今日焦点是油价{oil_trend}，贵金属则受{driver}扰动。",
+    ]
+
+    us_trend = f"{strength_word(us_avg)}{'走强' if us_avg > 0 else ('回落' if us_avg < 0 else '震荡')}"
+    cn_trend = f"{strength_word(cn_avg)}{'偏强' if cn_avg > 0 else ('偏弱' if cn_avg < 0 else '中性')}"
+    us_vol = f"{strength_word(us_avg)}"
+    cn_move = f"{strength_word(cn_avg)}{'上行' if cn_avg > 0 else ('回调' if cn_avg < 0 else '震荡')}"
+    oil_trend = f"{strength_word(oil_avg)}{'偏强' if oil_avg > 0 else ('偏弱' if oil_avg < 0 else '震荡')}"
+
+    us_driver = '利率预期与科技龙头财报预期'
+    if 'fed' in event_tags or 'yields' in event_tags:
+        us_driver = '美联储路径与美债收益率变化'
+    elif 'ai_tech' in event_tags:
+        us_driver = 'AI/半导体链条估值再定价'
+
+    cn_driver = '政策预期与内需修复节奏'
+    if 'china_policy' in event_tags:
+        cn_driver = '政策端信号与稳增长预期'
+
+    com_driver = '美元与实际利率预期'
+    if 'oil_supply' in event_tags:
+        com_driver = '供给扰动与地缘溢价'
+    elif 'gold_safe_haven' in event_tags or 'geopolitics' in event_tags:
+        com_driver = '避险需求与美元波动'
+
+    macro_note = rng.choice(macro_templates).format(us_trend=us_trend, cn_trend=cn_trend, mood=mood)
+    us_note = rng.choice(us_templates).format(us_vol=us_vol, driver=us_driver)
+    cn_note = rng.choice(cn_templates).format(cn_move=cn_move, driver=cn_driver)
+    com_note = rng.choice(com_templates).format(oil_trend=oil_trend, driver=com_driver)
+    strategy_note = f"{mood_emoji} {mood}：基线情景以数据验证为先，若{('收益率继续上行' if 'yields' in event_tags else '地缘风险再升温' if 'geopolitics' in event_tags else '政策预期落空')}，需控制仓位并避免情绪化追涨杀跌。"
 
     return {
         "date": now.strftime('%Y-%m-%d'),
@@ -167,6 +270,7 @@ def build_data(now):
         "cn_note": cn_note,
         "com_note": com_note,
         "strategy_note": strategy_note,
+        "headlines": headlines,
         "us": {
             "dji": colorize_line(fmt_line('道指 (DJI)', dji)),
             "spx": colorize_line(fmt_line('标普500 (SPX)', spx)),
@@ -199,6 +303,10 @@ def build_content_payload(d):
             "macro": {
                 "title": "🌍 宏观风向标",
                 "summary": d["macro_note"]
+            },
+            "events": {
+                "title": "📰 当日关键事件",
+                "items": d.get('headlines', [])[:5]
             },
             "us": {
                 "title": "🇺🇸 美股聚焦",
@@ -283,6 +391,13 @@ def build_daily_html(d):
       <article class='card'>
         <h2>🌍 宏观风向标</h2>
         <p>{d['macro_note']}</p>
+      </article>
+
+      <article class='card'>
+        <h2>📰 当日关键事件</h2>
+        <ul class='list'>
+          {''.join([f"<li>{h}</li>" for h in d.get('headlines', [])[:5]])}
+        </ul>
       </article>
 
       <article class='card'>
@@ -412,10 +527,15 @@ def build_daily_md(d):
     def plain(x: str):
         return re.sub(r'<[^>]+>', '', x)
 
+    event_lines = '\n'.join([f"- {h}" for h in d.get('headlines', [])[:5]]) or '- 暂无可用事件标题'
+
     return f"""# 全球金融投资日报（{d['date']}）
 
 ## 🌍 宏观风向标
 {d['macro_note']}
+
+## 📰 当日关键事件
+{event_lines}
 
 ## 🇺🇸 美股聚焦
 - {plain(d['us']['dji'])}
