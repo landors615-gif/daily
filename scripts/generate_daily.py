@@ -84,6 +84,10 @@ def fetch_rss_titles(url: str, limit: int = 5):
     return dedup[:limit]
 
 
+def contains_zh(text: str) -> bool:
+    return bool(re.search(r'[\u4e00-\u9fff]', text or ''))
+
+
 def detect_event_tags(headlines):
     text = ' '.join(headlines).lower()
     tags = []
@@ -202,11 +206,14 @@ def build_data(now):
     cn_avg = sum([x for x in cn_p.values() if x is not None]) / max(1, len([x for x in cn_p.values() if x is not None]))
     oil_avg = sum([x for x in [com_p['wti'], com_p['brent']] if x is not None]) / max(1, len([x for x in [com_p['wti'], com_p['brent']] if x is not None]))
 
-    world_news = fetch_rss_titles('https://news.google.com/rss/search?q=global+markets+when:1d&hl=en-US&gl=US&ceid=US:en', limit=4)
-    business_news = fetch_rss_titles('https://news.google.com/rss/search?q=federal+reserve+inflation+when:1d&hl=en-US&gl=US&ceid=US:en', limit=4)
-    market_news = fetch_rss_titles('https://news.google.com/rss/search?q=china+market+oil+gold+when:1d&hl=en-US&gl=US&ceid=US:en', limit=4)
-    headlines = (world_news + business_news + market_news)[:8]
-    event_tags = detect_event_tags(headlines)
+    world_news = fetch_rss_titles('https://news.google.com/rss/search?q=全球+市场+地缘+风险+when:1d&hl=zh-CN&gl=CN&ceid=CN:zh-Hans', limit=5)
+    business_news = fetch_rss_titles('https://news.google.com/rss/search?q=美联储+通胀+美债+收益率+when:1d&hl=zh-CN&gl=CN&ceid=CN:zh-Hans', limit=5)
+    market_news = fetch_rss_titles('https://news.google.com/rss/search?q=A股+原油+黄金+人民币+when:1d&hl=zh-CN&gl=CN&ceid=CN:zh-Hans', limit=5)
+    raw_headlines = (world_news + business_news + market_news)[:12]
+
+    zh_headlines = [h for h in raw_headlines if contains_zh(h)]
+    headlines = zh_headlines[:6]
+    event_tags = detect_event_tags(raw_headlines)
 
     day_seed = int(hashlib.md5(now.strftime('%Y-%m-%d').encode()).hexdigest()[:8], 16)
     rng = random.Random(day_seed)
@@ -259,6 +266,18 @@ def build_data(now):
     cn_note = rng.choice(cn_templates).format(cn_move=cn_move, driver=cn_driver)
     com_note = rng.choice(com_templates).format(oil_trend=oil_trend, driver=com_driver)
     strategy_note = f"{mood_emoji} {mood}：基线情景以数据验证为先，若{('收益率继续上行' if 'yields' in event_tags else '地缘风险再升温' if 'geopolitics' in event_tags else '政策预期落空')}，需控制仓位并避免情绪化追涨杀跌。"
+
+    if not headlines:
+        fallback = [
+            "美股与A股同步波动，市场继续消化利率与增长预期",
+            "原油与贵金属分化，资金在通胀交易与避险交易间切换",
+            "政策与地缘事件仍是短线风险偏好的主要扰动因素",
+        ]
+        if 'fed' in event_tags or 'yields' in event_tags:
+            fallback.insert(0, "美联储路径与美债收益率变化仍是全球资产定价核心")
+        if 'geopolitics' in event_tags:
+            fallback.insert(0, "地缘局势变化抬升风险溢价，能源与避险资产联动增强")
+        headlines = fallback[:5]
 
     return {
         "date": now.strftime('%Y-%m-%d'),

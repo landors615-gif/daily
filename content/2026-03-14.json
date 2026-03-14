@@ -1,6 +1,6 @@
 {
   "date": "2026-03-14",
-  "time": "2026-03-14 17:08:53",
+  "time": "2026-03-14 17:20:41",
   "mood": "⚖️ 震荡偏谨慎",
   "sections": {
     "macro": {
@@ -10,11 +10,9 @@
     "events": {
       "title": "📰 当日关键事件",
       "items": [
-        "Oil prices in the driving seat as energy shock upends global markets - Financial Times",
-        "Iran war takes toll on global markets - The Berkshire Eagle",
-        "Middle East Energy Disruptions: A Supply Shock Analysis - Enverus",
-        "The war on Iran will speed the transition away from fossil fuels and toward nuclear energy, creating strategic challenges for the United States - Bulletin of the Atomic Scientists",
-        "Underlying Inflation Dashboard - Federal Reserve Bank of Atlanta"
+        "美股与A股同步波动，市场继续消化利率与增长预期",
+        "原油与贵金属分化，资金在通胀交易与避险交易间切换",
+        "政策与地缘事件仍是短线风险偏好的主要扰动因素"
       ]
     },
     "us": {
@@ -24,7 +22,7 @@
         "标普500 (SPX): 6632.19 (▼ -0.62%)",
         "纳斯达克100 (NDQ): 22105.36 (▼ -1.43%)"
       ],
-      "summary": "美股三大指数呈现温和波动，当前交易主线围绕美联储路径与美债收益率变化展开。"
+      "summary": "美股三大指数呈现温和波动，当前交易主线围绕利率预期与科技龙头财报预期展开。"
     },
     "cn": {
       "title": "🇨🇳 A股透视",
@@ -43,11 +41,11 @@
         "黄金 (XAUUSD): 5019.83 (▼ -1.50%)",
         "白银 (XAGUSD): 80.6 (▼ -4.48%)"
       ],
-      "summary": "原油表现显著偏强，贵金属波动受避险需求与美元波动影响更明显。"
+      "summary": "原油表现显著偏强，贵金属波动受美元与实际利率预期影响更明显。"
     },
     "strategy": {
       "title": "💡 策略综述与明日展望",
-      "summary": "⚖️ 震荡偏谨慎：基线情景以数据验证为先，若地缘风险再升温，需控制仓位并避免情绪化追涨杀跌。"
+      "summary": "⚖️ 震荡偏谨慎：基线情景以数据验证为先，若政策预期落空，需控制仓位并避免情绪化追涨杀跌。"
     }
   }
 }
